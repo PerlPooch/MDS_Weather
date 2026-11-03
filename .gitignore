@@ -1,0 +1,20 @@
+# macOS metadata
+.DS_Store
+._*
+
+# Local editor settings and temporary files
+.vscode/
+.idea/
+*~
+*.swp
+*.swo
+
+# Generated build output
+/build/
+/.pio/
+*.o
+*.a
+*.elf
+*.bin
+*.hex
+*.map
