@@ -18,3 +18,6 @@ TEST_BUILD=$(mktemp -d)
 trap 'rm -rf "$TEST_BUILD"' EXIT HUP INT TERM
 c++ -std=c++17 -Wall -Wextra -I"$TEST_DIR/host" -I"$TEST_DIR/../src" -I"$ARDUINOJSON_SRC" "$TEST_DIR/weather.cpp" "$TEST_DIR/../src/MDS_Weather.cpp" -o "$TEST_BUILD/weather"
 "$TEST_BUILD/weather"
+
+c++ -std=c++17 -Wall -Wextra -I"$TEST_DIR/host" -I"$TEST_DIR/../src" -I"$ARDUINOJSON_SRC" "$TEST_DIR/errors.cpp" "$TEST_DIR/../src/MDS_Weather.cpp" -o "$TEST_BUILD/errors"
+"$TEST_BUILD/errors"

@@ -91,3 +91,22 @@ Firmware and software: **MPL-2.0**. Documentation and website: **CC BY-SA 4.0**.
 ## Contributions
 
 Contributions require a Developer Certificate of Origin (DCO) sign-off. Use `git commit -s` to add a `Signed-off-by` line to each contribution commit.
+
+`setStatusCallback()` accepts `MDS_Weather::StatusCallback`, defined as
+`std::function<void(const String&)>`, matching the Wi-Fi and time services.
+Pass `nullptr` to clear the callback.
+
+### Error reporting
+
+`error()` returns `Error::None`, `InvalidOptions`, `AllocationFailed`,
+`WorkerStartFailed`, `RequestFailed`, `ResponseTooLarge`, or `InvalidResponse`.
+`lastError()` supplies diagnostic text; `httpStatus()` retains the exact HTTP
+status or transport error from the last completed request.
+
+Changed valid options and successful fetches clear errors. Reapplying unchanged
+options, waiting for connectivity or time, registering callbacks and reading
+accessors preserve request errors. Reapplying valid options after invalid
+options restores the service and clears the configuration error. Cached samples
+remain available after request failures; use `fresh()` to check their age.
+Worker failures reach the public error state only when `tick()` collects the
+result, and results from an older configuration are discarded.
