@@ -1,6 +1,6 @@
 /*
  * ===========================================================================
- * MDS_Weather 0.3.0 - https://home.marcspencer.com/mds-weather
+ * MDS_Weather 0.4.0 - https://home.marcspencer.com/mds-weather
  *
  * Copyright (c) 2026 Marc D. Spencer.
  * All Rights Reserved under the applicable license.
@@ -50,6 +50,9 @@ public:
 		char condition[32] = {};
 		char description[96] = {};
 	};
+
+	// Receive each accepted sample on the caller's tick thread.
+	using UpdateCallback = std::function<void(const Sample&)>;
 
 	// Receive weather service status and error messages.
 	using StatusCallback = std::function<void(const String&)>;
@@ -170,6 +173,12 @@ public:
 		clockReadyCallback_ = callback;
 	}
 
+	// Register accepted-sample updates; nullptr clears the optional callback.
+	// The sample is borrowed for the call; keep callbacks brief and do not re-enter Weather.
+	void setUpdateCallback(UpdateCallback callback) {
+		updateCallback_ = callback;
+	}
+
 	// Register the callback for weather status/error messages; nullptr clears it.
 	void setStatusCallback(StatusCallback callback) {
 		statusCallback_ = callback;
@@ -233,6 +242,7 @@ private:
 	Sample sample_;
 	QueueHandle_t results_ = nullptr;
 	StatusCallback statusCallback_;
+	UpdateCallback updateCallback_;
 	ReadinessCallback networkReadyCallback_;
 	ReadinessCallback clockReadyCallback_;
 	Error error_ = Error::None;

@@ -56,6 +56,8 @@ static void completeRequest(MDS_Weather& weather) {
 int main() {
     bool networkReady = true;
     uint32_t acceptedNotifications = 0;
+    uint32_t updateNotifications = 0;
+    MDS_Weather::Sample copiedSample;
     MDS_Weather weather;
     MDS_Weather::Options options{"TESTKEY", "42.5", "-71.3", 60};
 
@@ -67,11 +69,21 @@ int main() {
         // Treat the fixed UTC fixture as usable for TLS.
         return true;
     });
+    weather.setUpdateCallback([&](const MDS_Weather::Sample& sample) {
+        // Copy values during the call without retaining the borrowed reference.
+        ++updateNotifications;
+        copiedSample = sample;
+    });
     weather.setStatusCallback([&](const String& message) {
         // The accepted counter must already be visible to update observers.
         if (message == "Weather: updated") {
             ++acceptedNotifications;
             assert(weather.sampleVersion() == acceptedNotifications);
+            assert(updateNotifications == acceptedNotifications);
+            assert(weather.available() && !weather.fetching());
+            assert(weather.error() == MDS_Weather::Error::None);
+            assert(weather.lastSuccessUtc() == 1792944000);
+            assert(weather.nextUpdateSeconds() == options.intervalSeconds);
         }
     });
 
@@ -83,7 +95,8 @@ int main() {
     httpState.beginOK = true;
     httpState.payload = R"({"main":{"temp":70},"timezone":0,"dt":1792944000,"weather":[{"main":"Clear"}]})";
     completeRequest(weather);
-    assert(weather.sampleVersion() == 1);
+    assert(weather.sampleVersion() == 1 && updateNotifications == 1);
+    assert(copiedSample.temperatureF == 70 && copiedSample.timezoneOffsetSeconds == 0);
     const time_t firstSuccessUtc = weather.lastSuccessUtc();
 
     completeRequest(weather);
@@ -96,7 +109,7 @@ int main() {
 
     httpState.status = 500;
     completeRequest(weather);
-    assert(weather.sampleVersion() == 2 && weather.available());
+    assert(weather.sampleVersion() == 2 && weather.available() && updateNotifications == 2);
     httpState.status = 200;
 
     // Reconfiguration invalidates an in-flight successful result without counting it.
@@ -128,9 +141,37 @@ int main() {
     completeRequest(weather);
     assert(weather.sampleVersion() == 4);
 
+    assert(updateNotifications == 4);
+
+    // Callback registration is independent of errors, configuration and the counter.
+    weather.setStatusCallback(nullptr);
+    weather.setUpdateCallback(nullptr);
+    completeRequest(weather);
+    assert(weather.sampleVersion() == 5 && updateNotifications == 4);
+
+    uint32_t replacementNotifications = 0;
+    weather.setUpdateCallback([&](const MDS_Weather::Sample&) {
+        // A replacement receives subsequent accepted updates exclusively.
+        ++replacementNotifications;
+    });
+    completeRequest(weather);
+    assert(weather.sampleVersion() == 6 && updateNotifications == 4);
+    assert(replacementNotifications == 1);
+
+    nowMillis += 600000;
+    weather.tick();
+    assert(weather.fetching());
+    runWorker();
+    assert(replacementNotifications == 1);
+    weather.setUpdateCallback(nullptr);
+    weather.tick();
+    assert(weather.sampleVersion() == 7 && replacementNotifications == 1);
+
     options.latitude = "91";
     assert(!weather.begin(options));
-    assert(weather.sampleVersion() == 4 && acceptedNotifications == 4);
+    assert(weather.sampleVersion() == 7 && acceptedNotifications == 4);
+    weather.setUpdateCallback(nullptr);
+    assert(weather.error() == MDS_Weather::Error::InvalidOptions);
     assert(tasks.empty());
-    puts("PASS: accepted sample versions, identical timestamps/data, notification ordering, failures and stale results.");
+    puts("PASS: sample versions and optional update callbacks, committed state, ordering, replacement/clearing, failures and stale results.");
 }

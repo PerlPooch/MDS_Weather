@@ -50,6 +50,14 @@ void setup() {
         return time(nullptr) > 1577836800;
     });
 
+    // The sample is borrowed for this call; keep callbacks brief and do not re-enter Weather.
+    weather.setUpdateCallback([](const MDS_Weather::Sample& sample) {
+        // Print each accepted update without retaining the sample reference.
+        Serial.print(sample.temperatureF, 1);
+        Serial.print(" F, ");
+        Serial.println(sample.description);
+    });
+
     MDS_Weather::Options options;
     
     options.apiKey = "YOURAPIKEY";
@@ -62,21 +70,9 @@ void setup() {
     }
 }
 
-// Service background work and report newly available data.
+// Service connectivity and deliver accepted weather updates.
 void loop() {
     wifi.tick();
 
     weather.tick();
-
-    // Print each successful update once.
-    static uint32_t lastPrintedSampleVersion = 0;
-    
-    if (weather.available() && weather.sampleVersion() != lastPrintedSampleVersion) {
-        lastPrintedSampleVersion = weather.sampleVersion();
-        const auto& sample = weather.sample();
-        
-        Serial.print(sample.temperatureF, 1);
-        Serial.print(" F, ");
-        Serial.println(sample.description);
-    }
 }

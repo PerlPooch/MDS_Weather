@@ -1,4 +1,4 @@
-# MDS_Weather 0.3.0
+# MDS_Weather 0.4.0
 
 Background OpenWeather current conditions over verified HTTPS, with cached results and scheduled retries.
 
@@ -63,6 +63,14 @@ void setup() {
         return time(nullptr) > 1577836800;
     });
 
+    // The sample is borrowed for this call; keep callbacks brief and do not re-enter Weather.
+    weather.setUpdateCallback([](const MDS_Weather::Sample& sample) {
+        // Print each accepted update without retaining the sample reference.
+        Serial.print(sample.temperatureF, 1);
+        Serial.print(" F, ");
+        Serial.println(sample.description);
+    });
+
     MDS_Weather::Options options;
     
     options.apiKey = "YOURAPIKEY";
@@ -75,23 +83,11 @@ void setup() {
     }
 }
 
-// Service background work and report newly available data.
+// Service connectivity and deliver accepted weather updates.
 void loop() {
     wifi.tick();
 
     weather.tick();
-
-    // Print each successful update once.
-    static uint32_t lastPrintedSampleVersion = 0;
-    
-    if (weather.available() && weather.sampleVersion() != lastPrintedSampleVersion) {
-        lastPrintedSampleVersion = weather.sampleVersion();
-        const auto& sample = weather.sample();
-        
-        Serial.print(sample.temperatureF, 1);
-        Serial.print(" F, ");
-        Serial.println(sample.description);
-    }
 }
 ```
 
@@ -146,3 +142,12 @@ Even identical samples or results sharing a UTC timestamp increment it. Failed
 requests, discarded results, and configuration changes do not increment or reset
 it. The `uint32_t` counter wraps naturally; compare versions with `!=` to detect
 updates and use `available()` separately to check whether the cache is usable.
+
+### Update callback
+
+`setUpdateCallback()` accepts an optional `void(const Sample&)` callback, invoked
+synchronously from `tick()` after committing each successful result and before the
+status notification. Failures and discarded results do not invoke it; `nullptr`
+clears it. The sample reference is borrowed for the callback's duration. Keep
+callbacks brief and do not re-enter Weather. `sampleVersion()` remains available
+for polling consumers.
