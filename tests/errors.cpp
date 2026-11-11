@@ -18,6 +18,9 @@
 #include <cassert>
 #include <new>
 
+static bool networkReady = true;
+static bool clockReady = true;
+
 using Error = MDS_Weather::Error;
 Stream Serial;
 uint32_t nowMillis = 0;
@@ -69,16 +72,25 @@ static void goodResponse() {
 // Advance past retry delays and process one complete request on the main thread.
 static void fetch(MDS_Weather& weather) {
 	nowMillis += 86400000;
-	weather.tick(true, true);
+	weather.tick();
 	assert(weather.fetching());
 	runWorker();
-	weather.tick(true, true);
+	weather.tick();
 	assert(!weather.fetching());
 }
 
 // Cover failure classification, worker transfer, persistence and configuration recovery.
 int main() {
 	MDS_Weather weather;
+	weather.setNetworkReadyCallback([]() {
+		// Expose the connectivity selected by each scenario.
+		return networkReady;
+	});
+	weather.setClockReadyCallback([]() {
+		// Expose the clock validity selected by each scenario.
+		return clockReady;
+	});
+
 	MDS_Weather::Options options{"TESTKEY", "42.5", "-71.3", 600};
 	std::vector<String> messages;
 	weather.setStatusCallback([&](const String& message) {
@@ -88,8 +100,14 @@ int main() {
 	assert(weather.error() == Error::None);
 	assert(String(weather.lastError()).empty());
 	assert(weather.begin(options));
-	weather.tick(false, true);
-	weather.tick(true, false);
+	networkReady = false;
+	weather.tick();
+	networkReady = true;
+
+	clockReady = false;
+	weather.tick();
+	clockReady = true;
+
 	assert(weather.error() == Error::None);
 
 	// Returning to the previous valid options must restore a disabled service.
@@ -102,18 +120,18 @@ int main() {
 	assert(weather.configured() && weather.error() == Error::None);
 
 	failQueue = true;
-	weather.tick(true, true);
+	weather.tick();
 	assert(weather.error() == Error::AllocationFailed);
 	assert(!weather.fetching());
 	failQueue = false;
 	nowMillis += 60000;
 	failJobAllocation = true;
-	weather.tick(true, true);
+	weather.tick();
 	assert(weather.error() == Error::AllocationFailed);
 	assert(String(weather.lastError()) == "Weather: cannot allocate request");
 	nowMillis += 60000;
 	failTask = true;
-	weather.tick(true, true);
+	weather.tick();
 	assert(weather.error() == Error::WorkerStartFailed);
 	assert(tasks.empty());
 	failTask = false;
@@ -136,7 +154,11 @@ int main() {
 	// Reapplying configuration, waiting and accessors must preserve request errors.
 	assert(weather.begin(options));
 	assert(weather.error() == Error::RequestFailed);
-	weather.tick(false, false);
+	networkReady = false;
+	clockReady = false;
+	weather.tick();
+	networkReady = true;
+	clockReady = true;
 	(void)weather.state();
 	(void)weather.sample();
 	(void)weather.fresh();
@@ -179,12 +201,12 @@ int main() {
 	++options.intervalSeconds;
 	assert(weather.begin(options));
 	assert(weather.error() == Error::None);
-	weather.tick(true, true);
+	weather.tick();
 	assert(weather.fetching());
 	options.apiKey = "";
 	assert(weather.begin(options));
 	runWorker();
-	weather.tick(true, true);
+	weather.tick();
 	assert(weather.error() == Error::None);
 	assert(!weather.enabled() && !weather.available());
 	assert(tasks.empty());

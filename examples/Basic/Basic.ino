@@ -19,6 +19,7 @@
 MDS_WiFi wifi;
 MDS_Weather weather;
 
+// Configure connectivity, readiness sources, and service options.
 void setup() {
     Serial.begin(115200);
 
@@ -39,6 +40,16 @@ void setup() {
         Serial.println(message);
     });
 
+    weather.setNetworkReadyCallback([]() {
+        // Use the connection manager's station and IP readiness.
+        return wifi.ready();
+    });
+
+    weather.setClockReadyCallback([]() {
+        // A plausible UTC clock permits TLS certificate date validation.
+        return time(nullptr) > 1577836800;
+    });
+
     MDS_Weather::Options options;
     
     options.apiKey = "YOURAPIKEY";
@@ -51,13 +62,11 @@ void setup() {
     }
 }
 
+// Service background work and report newly available data.
 void loop() {
     wifi.tick();
 
-    const bool networkReady = wifi.ready();
-    const bool clockReady = time(nullptr) > 1577836800;  // After Jan 1, 2020.
-    
-    weather.tick(networkReady, clockReady);
+    weather.tick();
 
     // Print each successful update once.
     static time_t lastPrinted = 0;

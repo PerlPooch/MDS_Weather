@@ -21,3 +21,6 @@ c++ -std=c++17 -Wall -Wextra -I"$TEST_DIR/host" -I"$TEST_DIR/../src" -I"$ARDUINO
 
 c++ -std=c++17 -Wall -Wextra -I"$TEST_DIR/host" -I"$TEST_DIR/../src" -I"$ARDUINOJSON_SRC" "$TEST_DIR/errors.cpp" "$TEST_DIR/../src/MDS_Weather.cpp" -o "$TEST_BUILD/errors"
 "$TEST_BUILD/errors"
+
+c++ -std=c++17 -Wall -Wextra -I"$TEST_DIR/host" -I"$TEST_DIR/../src" -I"$ARDUINOJSON_SRC" "$TEST_DIR/readiness.cpp" "$TEST_DIR/../src/MDS_Weather.cpp" -o "$TEST_BUILD/readiness"
+"$TEST_BUILD/readiness"

@@ -218,7 +218,10 @@ uint32_t MDS_Weather::nextUpdateSeconds() const {
 }
 
 // Collect worker results and schedule requests when network, clock, and timing allow.
-void MDS_Weather::tick(bool networkReady, bool clockReady) {
+void MDS_Weather::tick() {
+	const bool networkReady = networkReadyCallback_ && networkReadyCallback_();
+	const bool clockReady = clockReadyCallback_ && clockReadyCallback_();
+
 	networkReady_ = networkReady;
 	clockReady_ = clockReady;
 	Result result;

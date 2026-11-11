@@ -26,6 +26,7 @@ With no saved Wi-Fi credentials, join the `Weather <MAC>` access point (password
 MDS_WiFi wifi;
 MDS_Weather weather;
 
+// Configure connectivity, readiness sources, and service options.
 void setup() {
     Serial.begin(115200);
 
@@ -46,6 +47,16 @@ void setup() {
         Serial.println(message);
     });
 
+    weather.setNetworkReadyCallback([]() {
+        // Use the connection manager's station and IP readiness.
+        return wifi.ready();
+    });
+
+    weather.setClockReadyCallback([]() {
+        // A plausible UTC clock permits TLS certificate date validation.
+        return time(nullptr) > 1577836800;
+    });
+
     MDS_Weather::Options options;
     
     options.apiKey = "YOURAPIKEY";
@@ -58,13 +69,11 @@ void setup() {
     }
 }
 
+// Service background work and report newly available data.
 void loop() {
     wifi.tick();
 
-    const bool networkReady = wifi.ready();
-    const bool clockReady = time(nullptr) > 1577836800;  // After Jan 1, 2020.
-    
-    weather.tick(networkReady, clockReady);
+    weather.tick();
 
     // Print each successful update once.
     static time_t lastPrinted = 0;
@@ -110,3 +119,15 @@ options restores the service and clears the configuration error. Cached samples
 remain available after request failures; use `fresh()` to check their age.
 Worker failures reach the public error state only when `tick()` collects the
 result, and results from an older configuration are discarded.
+
+### Readiness callbacks
+
+Register `setNetworkReadyCallback()` before expecting network work to start.
+Weather also requires `setClockReadyCallback()` to report a usable system UTC clock for TLS.
+Callbacks return `bool` and run synchronously from `tick()`; keep them quick and
+nonblocking. An unset callback returns false in effect. Pass `nullptr` to clear
+one. Registration is independent of `begin(options)`: missing callbacks do not
+invalidate options or overwrite errors. Call `tick()` without arguments.
+
+Weather still collects outstanding results and serves cached samples while waiting.
+Readiness status reflects the latest tick.

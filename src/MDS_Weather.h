@@ -54,6 +54,9 @@ public:
 	// Receive weather service status and error messages.
 	using StatusCallback = std::function<void(const String&)>;
 
+	// Query a prerequisite without taking ownership of its service.
+	using ReadinessCallback = std::function<bool()>;
+
 	// Create an inactive weather service; begin() supplies its options.
 	MDS_Weather() = default;
 
@@ -69,8 +72,8 @@ public:
 	// Copy options; an empty key disables requests and clears the cached sample.
 	bool begin(const Options& options);
 
-	// Collect results and schedule a worker only when network and TLS clock are ready.
-	void tick(bool networkReady, bool clockReady);
+	// Collect results and schedule a worker when both readiness callbacks return true.
+	void tick();
 
 	// Report whether a nonempty API key enables weather requests.
 	bool enabled() const {
@@ -149,6 +152,18 @@ public:
 		return errorText_;
 	}
 
+	// Query connectivity from tick(); an unset callback means unavailable.
+	// Keep callbacks nonblocking; nullptr clears the registered source.
+	void setNetworkReadyCallback(ReadinessCallback callback) {
+		networkReadyCallback_ = callback;
+	}
+
+	// Query TLS clock readiness from tick(); an unset callback means unavailable.
+	// Keep callbacks nonblocking; nullptr clears the registered source.
+	void setClockReadyCallback(ReadinessCallback callback) {
+		clockReadyCallback_ = callback;
+	}
+
 	// Register the callback for weather status/error messages; nullptr clears it.
 	void setStatusCallback(StatusCallback callback) {
 		statusCallback_ = callback;
@@ -212,6 +227,8 @@ private:
 	Sample sample_;
 	QueueHandle_t results_ = nullptr;
 	StatusCallback statusCallback_;
+	ReadinessCallback networkReadyCallback_;
+	ReadinessCallback clockReadyCallback_;
 	Error error_ = Error::None;
 	char errorText_[96] = {};
 	uint32_t generation_ = 0;
