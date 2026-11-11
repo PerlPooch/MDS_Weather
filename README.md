@@ -1,6 +1,12 @@
-# MDS_Weather
+# MDS_Weather 0.2.0
 
 Background OpenWeather current conditions over verified HTTPS, with cached results and scheduled retries.
+
+## Migration from 0.1.0
+
+Register `setNetworkReadyCallback()` and `setClockReadyCallback()`, then replace
+`tick(networkReady, clockReady)` with `tick()`. Missing or cleared callbacks mean
+unavailable. Outstanding results are still collected while waiting.
 
 ## Requirements
 
