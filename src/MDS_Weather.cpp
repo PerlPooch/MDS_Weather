@@ -1,6 +1,6 @@
 /*
  * ===========================================================================
- * MDS_Weather 0.2.0 - https://home.marcspencer.com/mds-weather
+ * MDS_Weather 0.3.0 - https://home.marcspencer.com/mds-weather
  *
  * Copyright (c) 2026 Marc D. Spencer.
  * All Rights Reserved under the applicable license.
@@ -240,6 +240,7 @@ void MDS_Weather::tick() {
 				failures_ = 0;
 				clearError();
 				nextDue_ = millis() + request_.intervalSeconds * 1000UL;
+				++sampleVersion_;
 				status("Weather: updated");
 			} else {
 				fail(result.error, result.errorText);

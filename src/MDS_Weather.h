@@ -1,6 +1,6 @@
 /*
  * ===========================================================================
- * MDS_Weather 0.2.0 - https://home.marcspencer.com/mds-weather
+ * MDS_Weather 0.3.0 - https://home.marcspencer.com/mds-weather
  *
  * Copyright (c) 2026 Marc D. Spencer.
  * All Rights Reserved under the applicable license.
@@ -142,6 +142,12 @@ public:
 		return sample_;
 	}
 
+	// Count accepted successful results for this instance, wrapping as uint32_t.
+	// Configuration changes and failed or discarded results leave this unchanged.
+	uint32_t sampleVersion() const {
+		return sampleVersion_;
+	}
+
 	// Return the latest failure code without changing request or cache state.
 	Error error() const {
 		return error_;
@@ -232,6 +238,7 @@ private:
 	Error error_ = Error::None;
 	char errorText_[96] = {};
 	uint32_t generation_ = 0;
+	uint32_t sampleVersion_ = 0;
 	uint32_t nextDue_ = 0;
 	uint32_t lastSuccessMillis_ = 0;
 	time_t lastSuccessUtc_ = 0;

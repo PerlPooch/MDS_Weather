@@ -1,4 +1,4 @@
-# MDS_Weather 0.2.0
+# MDS_Weather 0.3.0
 
 Background OpenWeather current conditions over verified HTTPS, with cached results and scheduled retries.
 
@@ -82,10 +82,10 @@ void loop() {
     weather.tick();
 
     // Print each successful update once.
-    static time_t lastPrinted = 0;
+    static uint32_t lastPrintedSampleVersion = 0;
     
-    if (weather.available() && weather.lastSuccessUtc() != lastPrinted) {
-        lastPrinted = weather.lastSuccessUtc();
+    if (weather.available() && weather.sampleVersion() != lastPrintedSampleVersion) {
+        lastPrintedSampleVersion = weather.sampleVersion();
         const auto& sample = weather.sample();
         
         Serial.print(sample.temperatureF, 1);
@@ -137,3 +137,12 @@ invalidate options or overwrite errors. Call `tick()` without arguments.
 
 Weather still collects outstanding results and serves cached samples while waiting.
 Readiness status reflects the latest tick.
+
+### Accepted sample counter
+
+`sampleVersion()` starts at zero and increments once whenever `tick()` accepts a
+successful result for the current configuration, before delivering `Weather: updated`.
+Even identical samples or results sharing a UTC timestamp increment it. Failed
+requests, discarded results, and configuration changes do not increment or reset
+it. The `uint32_t` counter wraps naturally; compare versions with `!=` to detect
+updates and use `available()` separately to check whether the cache is usable.

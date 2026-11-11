@@ -69,10 +69,10 @@ void loop() {
     weather.tick();
 
     // Print each successful update once.
-    static time_t lastPrinted = 0;
+    static uint32_t lastPrintedSampleVersion = 0;
     
-    if (weather.available() && weather.lastSuccessUtc() != lastPrinted) {
-        lastPrinted = weather.lastSuccessUtc();
+    if (weather.available() && weather.sampleVersion() != lastPrintedSampleVersion) {
+        lastPrintedSampleVersion = weather.sampleVersion();
         const auto& sample = weather.sample();
         
         Serial.print(sample.temperatureF, 1);
